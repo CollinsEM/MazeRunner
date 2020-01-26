@@ -3,17 +3,19 @@ var group;
 var container, stats;
 var neuronData = [];
 var camera, scene, renderer;
-var synapsePos, synapseCol;
-var cortex;
-var pointCloud;
-var neuronPos;
-var neuronCol;
-var neuronSize;
-var proxDendrites;
-var maxNeurons = 1000;
-var r = 800;
-var numLayers = 8;
-var gui;
+var maze, agent;
+
+// var synapsePos, synapseCol;
+// var cortex;
+// var pointCloud;
+// var neuronPos;
+// var neuronCol;
+// var neuronSize;
+// var proxDendrites;
+// var maxNeurons = 1000;
+// var r = 800;
+// var numLayers = 8;
+// var gui;
 var SHADOW_MAP_WIDTH = 2048;
 var SHADOW_MAP_HEIGHT = 1024;
 
@@ -73,15 +75,23 @@ function init() {
   
   var group = initScene();
 	scene.add( group );
-  
+
   animate();
 }
 //--------------------------------------------------------------------
 function initScene() {
 	group = new THREE.Group();
   var ni = 20, nj = 20;
-  var maze = new Maze(ni, nj);
+  
+  maze = new Maze(ni, nj);
   group.add( maze );
+  
+  agent = new Agent(maze);
+  agent.avatar.translateX(Math.floor(ni*Math.random()));
+  agent.avatar.translateY(Math.floor(ni*Math.random()));
+  agent.avatar.translateZ(0.5);
+  group.add( agent.avatar );
+  
 	group.position.set(-ni/2, -nj/2, 0);
   camera.position.set(0, 0, Math.sqrt(ni*ni + nj*nj));
   return group;
@@ -93,16 +103,18 @@ function onWindowResize() {
 	renderer.setSize( window.innerWidth, window.innerHeight );
 }
 //--------------------------------------------------------------------
+var clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
 	stats.update();
+  var dt = clock.getDelta();
+  agent.update(dt);
 	render();
   return;
 }
 
 function render() {
 	var time = Date.now() * 0.005;
-	// group.rotation.y = time * 0.01;
 	renderer.render( scene, camera );
 }
 

@@ -1,9 +1,19 @@
-class Cell {
-  constructor() {
-    this.visited = false;
-    this.neighbors = [];
+class Wall {
+  /// @param cl cell on the left side of the wall
+  /// @param cr cell on the right side of the wall
+  constructor(cl, cr) {
+    
   }
-}
+};
+
+class Cell {
+  constructor(x, y) {
+    this.pos = { x: x, y: y };
+    this.visited = false;
+    this.walls = [];
+    this.doors = [];
+  }
+};
 
 class Maze extends THREE.Object3D {
   constructor(ni, nj) {
@@ -14,9 +24,11 @@ class Maze extends THREE.Object3D {
     for (var i=0; i<ni; ++i) {
       this.cellData[i] = [];
       for (var j=0; j<nj; ++j) {
-        this.cellData[i][j] = new Cell();
+        this.cellData[i][j] = new Cell(2*i+1, 2*j+1);
       }
     }
+    
+    
     this.geometry = new THREE.Geometry();
     this.geometry.vertices.push( new THREE.Vector3(  -0.50,   -0.50, 0) );
     this.geometry.vertices.push( new THREE.Vector3(ni-0.50,   -0.50, 0) );
