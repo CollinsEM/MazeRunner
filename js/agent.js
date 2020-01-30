@@ -1,3 +1,23 @@
+class MotionState {
+  /**
+   * @param p0 Initial position
+   * @param v0 Initial velocity
+   */
+  constructor(p0, v0) {
+    this.p0 = p0 || 0;
+    this.v0 = v0 || 0;
+  }
+  //--------------------------------------------------------------------
+  solve(p1) {
+    return ( this.v0==0 ? [] : [(p1-this.p0)/this.v0] );
+  }
+  //--------------------------------------------------------------------
+  update(dt) {
+    return { p: (0.5*this.a*dt + this.v0)*dt + this.p0,
+             v: (this.a*dt + this.v0) };
+  }
+};
+
 /**
  * The Avatar class describes the appearance of the AI agent, and
  * manages its interaction with the external environment.
@@ -6,39 +26,33 @@ class Avatar extends THREE.Group {
   constructor(env) {
     super();
     this.env = env;
-    var geom = new THREE.IcosahedronBufferGeometry(0.25, 2);
+    this.rad = 0.25;
+    var geom = new THREE.IcosahedronBufferGeometry(this.rad, 2);
     var mat = new THREE.MeshLambertMaterial( { color: 'orange' } );
     this.skin = new THREE.Mesh(geom, mat);
     this.add(this.skin);
-    
-    this.pos = { x: 0.0, y: 0.0, z: 0.0 };
-    this.vel = { x: 0.0, y: 0.0, z: 0.0 };
-    this.acc = { x: 0.0, y: 0.0, z: 0.0 };
-    // this.vel = { x: 1.0, y: 0.0, z: 0.0 };
-    // this.acc = { x:-0.1, y: 0.0, z: 0.0 };
+
+    this.xState = new MotionState(0, 0);
+    this.yState = new MotinoState(0, 0);
   }
   update(dt) {
-    var p0 = { x: this.pos.x, y: this.pos.y };
-    var v0 = { x: this.vel.x, y: this.vel.y };
-    var a0 = { x: this.acc.x, y: this.acc.y };
-    var dp = { x: (v0.x + 0.5*a0.x*dt)*dt,
-               y: (v0.y + 0.5*a0.y*dt)*dt };
-    var dv = { x: a0.x*dt,
-               y: a0.y*dt };
-    this.pos.x = p0.x + dp.x;
-    this.pos.y = p0.y + dp.y;
-    this.vel.x = v0.x + dv.x;
-    this.vel.y = v0.y + dv.y;
-    
-    this.translateX(dp.x);
-    this.translateY(dp.y);
+    var obj = { dt: dt };
+    while (obj.dt > 0) {
+      obj = this.env.detectCollision(this.xState, this.yState, obj.dt, this.rad);
+      this.translateX(obj.px - this.px);
+      this.translateY(obj.py - this.py);
+      this.px = obj.px;
+      this.vx = obj.vx;
+      this.py = obj.py;
+      this.vy = obj.vy;
+    }
   }
 };
 
 class Agent {
   constructor(env) {
-    this.avatar = new Avatar(env);
     this.env = env;
+    this.avatar = new Avatar(env);
   }
   update(dt) {
     this.avatar.update(dt);
