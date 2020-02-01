@@ -4,6 +4,7 @@ var stats;
 var neuronData = [];
 var env, gcm;
 var maze, agent;
+var clock = new THREE.Clock();
 
 // var synapsePos, synapseCol;
 // var cortex;
@@ -21,7 +22,7 @@ var SHADOW_MAP_HEIGHT = 1024;
 
 window.addEventListener( 'load', init, false );
 window.addEventListener( 'resize', onWindowResize, false );
-
+window.addEventListener( 'keypress', onWindowKeypress, false );
 //--------------------------------------------------------------------
 function init() {
   var container = document.getElementById( 'container' );
@@ -37,11 +38,13 @@ function onWindowResize() {
 	env.renderer.setSize( window.innerWidth, window.innerHeight );
 }
 //--------------------------------------------------------------------
-var clock = new THREE.Clock();
-var dt;
+var step = true;
+function onWindowKeypress() {
+  step = true;
+}
+//--------------------------------------------------------------------
 function animate() {
   requestAnimationFrame(animate);
 	stats.update();
-  dt = clock.getDelta();
-  env.update(dt);
+  env.update(clock.getDelta());
 }

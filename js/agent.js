@@ -4,17 +4,23 @@ class MotionState {
    * @param v0 Initial velocity
    */
   constructor(p0, v0) {
-    this.p0 = p0 || 0;
-    this.v0 = v0 || 0;
+    this.p0 = new THREE.Vector2( p0.x || 0, p0.y || 0 );
+    this.v0 = new THREE.Vector2( v0.x || Math.random(),
+                                 v0.y || Math.random() );
   }
   //--------------------------------------------------------------------
-  solve(p1) {
-    return ( this.v0==0 ? [] : [(p1-this.p0)/this.v0] );
+  xSolve(x1) {
+    return (x1-this.p0.x)/this.v0.x;
+  }
+  ySolve(y1) {
+    return (y1-this.p0.y)/this.v0.y;
   }
   //--------------------------------------------------------------------
   update(dt) {
-    return { p: (0.5*this.a*dt + this.v0)*dt + this.p0,
-             v: (this.a*dt + this.v0) };
+    return { dp: this.v0*dt,
+             dv: 0,
+             p:  this.v0*dt + this.p0,
+             v:  this.v0 };
   }
 };
 
@@ -23,38 +29,41 @@ class MotionState {
  * manages its interaction with the external environment.
  */
 class Avatar extends THREE.Group {
-  constructor(env) {
+  constructor(env, x0, y0) {
     super();
     this.env = env;
-    this.rad = 0.25;
-    var geom = new THREE.IcosahedronBufferGeometry(this.rad, 2);
+    this.radius = 0.25;
+    var geom = new THREE.IcosahedronBufferGeometry(this.radius, 2);
     var mat = new THREE.MeshLambertMaterial( { color: 'orange' } );
     this.skin = new THREE.Mesh(geom, mat);
     this.add(this.skin);
-
-    this.xState = new MotionState(0, 0);
-    this.yState = new MotinoState(0, 0);
+    this.position.set(x0, y0, 0.5);
+    this.velocity = new THREE.Vector3(Math.random(), Math.random(), 0);
   }
-  update(dt) {
-    var obj = { dt: dt };
-    while (obj.dt > 0) {
-      obj = this.env.detectCollision(this.xState, this.yState, obj.dt, this.rad);
-      this.translateX(obj.px - this.px);
-      this.translateY(obj.py - this.py);
-      this.px = obj.px;
-      this.vx = obj.vx;
-      this.py = obj.py;
-      this.vy = obj.vy;
+  update(dtmax) {
+    var dt = dtmax;
+    for (var i=0; dt>0 && i<10; ++i) {
+      var obj = this.env.detectCollision(this.position,
+                                         this.velocity,
+                                         dt, this.radius);
+      i
+      dt -= obj.dt;
+      this.translateX(this.velocity.x*obj.dt);
+      this.translateY(this.velocity.y*obj.dt);
+      this.velocity.set(obj.vx, obj.vy, 0);
     }
   }
 };
 
 class Agent {
-  constructor(env) {
+  constructor(env, x0, y0) {
     this.env = env;
-    this.avatar = new Avatar(env);
+    this.avatar = new Avatar(env, x0, y0);
   }
   update(dt) {
-    this.avatar.update(dt);
+    if (step) {
+      this.avatar.update(dt);
+      step = true;
+    }
   }
 };

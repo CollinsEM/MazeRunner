@@ -55,11 +55,11 @@ class Environment {
   
     this.maze = new Maze(ni, nj);
     this.group.add( this.maze );
-  
-    this.agent = new Agent( this.maze );
-    this.agent.avatar.translateX( Math.floor(ni*Math.random()) );
-    this.agent.avatar.translateY( Math.floor(nj*Math.random()) );
-    this.agent.avatar.translateZ( 0.5 );
+
+    // Initialize Agent at this position
+    var x0 = Math.floor(ni*Math.random());
+    var y0 = Math.floor(nj*Math.random());
+    this.agent = new Agent( this.maze, x0, y0 );
     this.group.add( this.agent.avatar );
     
 	  this.group.position.set(-ni/2, -nj/2, 0);
