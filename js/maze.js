@@ -1,3 +1,5 @@
+"use strict"
+
 class Wall {
   /// @param cl cell on the left side of the wall
   /// @param cr cell on the right side of the wall
@@ -44,10 +46,10 @@ class Maze extends THREE.Object3D {
   // the maze. If so, then return the time and place of impact.
   /// @param pos   Current location of object
   /// @param vel   Current velocity of object
-  /// @param T     Maximum time interval to consider
+  /// @param dtmax Maximum time interval to consider
   /// @param R     Radius of a sphere about the object center for which
   ///              collisions with solid walls should be considered.
-  /// @return      An object containing the expected time (t<T) at which
+  /// @return      An object containing the expected time (t<dtmax) at which
   ///              the object will either leave the current cell
   ///              through an open passage, or collide with a solid
   ///              wall.
@@ -55,6 +57,10 @@ class Maze extends THREE.Object3D {
     // Identify which cell is being queried
     var i0 = Math.round(pos.x);
     var j0 = Math.round(pos.y);
+    // Temporary placeholders
+    var dt = dtmax;
+    var vx = vel.x;
+    var vy = vel.y;
     // console.log(i0, j0);
     // console.log(pos.x, pos.y);
     // console.log(vel.x, vel.y);
@@ -64,67 +70,7 @@ class Maze extends THREE.Object3D {
     else if (j0 < 0 || j0 >= this.nj) {
       return { dt: -0.1*dtmax, vx: vel.x, vy:-vel.y };
     }
-    var RR  = R*R;
-    var dt = dtmax;
-    var vx = vel.x, vxSq = vx*vx;
-    var vy = vel.y, vySq = vy*vy;
-    // Find the time to intersect the nearest corner
-    for (var i=0; i<2; ++i) {
-      var x = i0 - 0.5 + i;
-      var dx = pos.x - dx;
-      var dxSq = dx*dx;
-      for (var j=0; j<2; ++j) {
-        var y = j0 - 0.5 + j;
-        var dy = pos.y - y;
-        var dySq = dy*dy;
-        var dpSq = dxSq + dySq;
-        var A = vxSq + vySq;
-        var B = -(dx*vel.x + dy*vel.y);
-        var C = dxSq + dySq - RSq;
-        var D = B*B - 4*A*C;
-        if (dpSq < RSq) {
-          var ax = dx/RSq;
-          var ay = dy/RSq;
-          console.log("Close to corner:", i, j);
-          console.log(A, B, C, D);
-        }
-        if (D >= 0) {
-          D = Math.sqrt(D);
-          var t1 = (-B + D)/(2*A);
-          var t2 = (-B - D)/(2*A);
-          console.log("t1:", t1, ", t2:", t2);
-          if (t1 > 0 && t1 < dt) {
-            dt = t1;
-            var x1 = pos.x + vel.x*dt;
-            var y1 = pos.y + vel.y*dt;
-            var r  = { x: x1 - x, y: y1 - y };
-            var dr = Math.sqrt(r.x*r.x + r.y*r.y);
-            var n  = { x: r.x/dr, y: r.y/dr };
-            var vn = (vel.x*n.x + vel.y*n.y);
-            console.log("normal: ", n);
-            vx = vel.x - 2*vn*n.x;
-            vy = vel.y - 2*vn*n.y;
-            console.log("velocity: ", vx, vy);
-          }
-          if (t2 > 0 && t2 < dt) {
-            dt = t2;
-            var x1 = pos.x + vel.x*dt;
-            var y1 = pos.y + vel.y*dt;
-            var r  = { x: x1 - x, y: y1 - y };
-            var dr = Math.sqrt(r.x*r.x + r.y*r.y);
-            var n  = { x: r.x/dr, y: r.y/dr };
-            var vn = (vel.x*n.x + vel.y*n.y);
-            console.log("normal: ", n);
-            vx = vel.x - 2*vn*n.x;
-            vy = vel.y - 2*vn*n.y;
-            console.log("velocity: ", vx, vy);
-          }
-        }
-      }
-    }
-    var x, y;
     if (vel.x < 0) {
-      x = i0 - 0.55;
       var west = this.cellData[i0][j0].walls[0];
       var x0 = ( west ? (i0-0.45+R) : (i0-0.5) );
       var t0 = (x0 - pos.x) / vel.x;
@@ -136,7 +82,6 @@ class Maze extends THREE.Object3D {
       }
     }
     if (vel.y < 0) {
-      y = j0 - 0.55;
       var south = this.cellData[i0][j0].walls[1];
       var y1 = ( south ? (j0-0.45+R) : (j0-0.5) );
       var t1 = (y1 - pos.y) / vel.y;
@@ -148,7 +93,6 @@ class Maze extends THREE.Object3D {
       }
     }
     if (vel.x > 0) {
-      x = i0 + 0.55;
       var east = this.cellData[i0][j0].walls[2];
       var x2 = ( east ? (i0+0.45-R) : (i0+0.5) );
       var t2 = (x2 - pos.x) / vel.x;
@@ -160,7 +104,6 @@ class Maze extends THREE.Object3D {
       }
     }
     if (vel.y > 0) {
-      y = i0 + 0.55;
       var north = this.cellData[i0][j0].walls[3];
       var y3 = ( north ? (j0+0.45-R) : (j0+0.5) );
       var t3 = (y3 - pos.y) / vel.y;
@@ -171,8 +114,108 @@ class Maze extends THREE.Object3D {
         vy = (north ? -1 : 1)*vel.y;
       }
     }
-    
+    for (var i=0; i<2; ++i) {
+      for (var j=0; j<2; ++j) {
+        var q = { x: i0 - 0.5 + i, y: j0 - 0.5 + j };
+        var t = this.intersectCorner(q, pos, vel, R);
+        if (t != null && t<dt) {
+          console.log(t, dt, dtmax);
+          dt = t;
+          // Reflect the normal component of velocity
+          var p = { x: pos.x + vel.x*dt, y: pos.y + vel.y*dt };
+          var n = { x: p.x - q.x, y: p.y - q.y };
+          var den = Math.sqrt(n.x*n.x + n.y*n.y);
+          n.x /= den; // normalize
+          n.y /= den;
+          var vn = vel.x*n.x + vel.y*n.y;
+          console.log("vx:", vel.x, " => ", vel.x - 2*vn*n.x);
+          console.log("vy:", vel.y, " => ", vel.y - 2*vn*n.y);
+          vx = vel.x - 2*vn*n.x;
+          vy = vel.y - 2*vn*n.y;
+        }
+      }
+    }
     return { dt: dt, vx: vx, vy: vy };
+  }
+  /** Find the time to intersect the nearest corner
+   *  @param q  corner location
+   *  @param p0 current location of object center
+   *  @param v0 current velocity of object
+   *  @param R  radius of object
+   *
+   *  Let p1 = p0 + v0*t
+   *
+   *  Compute the distance squared between q and p1
+   *
+   *    dd = (p1.x-q.x)^2 + (p1.y-q.y)^2
+   *       = (p0.x + v0.x*t - q.x)^2 + (p0.y + v0.y*t - q.y)^2
+   *       = (p0.x - q.x + v0.x*t)^2 + (p0.y - q.y + v0.y*t)^2
+   *       = (dx0 + vx*t)*(dx0 + vx*t) + (dy0 + vy*t)*(dy0 + vy*t)
+   *       = (dx0*dx0 + 2*dx0*vx*t + vx*vx*t*t) + (dy0*dy0 + 2*dy0*vy*t + vy*vy*t*t)
+   *
+   *    dx0 = p0.x - q.x,   vx = v0.x
+   *    dy0 = p0.y - q.y,   vy = v0.y
+   *
+   *  When dd = R*R, the outer surface of the object in in contact
+   *  with q. Rearranging the terms in this expression, we get:
+   *
+   *    (vx*vx + vy*vy)*t*t + 2*(dx0*vx + dy0*vy)*t + (dx0*dx0 + dy0*dy0 - R*R) = 0
+   *
+   *  This is a quadratic equation in t:
+   *
+   *    A*t^2 + B*t + C = 0
+   *
+   *    A = (vx*vx + vy*vy)
+   *    B = 2*(dx0*vx + dy0*vy)
+   *    C = (dx0*dx0 + dy0*dy0 - R*R)
+   *
+   *  with a solution of:
+   *
+   *    t = (-B +/- sqrt(B*B - 4*A*C))/(2*A)
+   *
+   *  Features of note:
+   *    * By construction, A >= 0
+   *    * When A == 0, the velocity is zero and the solution is undefined
+   *    * When C > 0, the distance from p0 to q is greater than R
+   *    * When C <= 0, q is already within the object's outer surface
+   *    * If B*B - 4*A*C < 0 then there are no valid intersections
+   */
+  intersectCorner(q, p0, v0, R) {
+    var dx0 = p0.x - q.x;
+    var dy0 = p0.y - q.y;
+    var dd0 = dx0*dx0 + dy0*dy0;
+    // If d0 < R, or equivalently d0*d0 < R*R, then we are already too
+    // close to a corner.  Compute the time when the intersection
+    // occured, and back the object up.
+    // if (dd0 < R*R) {
+    //   console.log("Object is already too close to a corner:", Math.sqrt(dd0), "<", R);
+    //   console.log("p: ", p0, ", q:", q);
+    // }
+    // Solving A*t^2 + B*t + C = 0
+    var A = v0.x*v0.x + v0.y*v0.y;  // A >= 0
+    // If A = 0, then the object is not moving.
+    if (A == 0) return null;
+    var B = 2*(dx0*v0.x + dy0*v0.y);
+    var C = dd0 - R*R;  // Distance from skin to corner
+    var D = B*B - 4*A*C;// D > 0 when object travels within R of corner
+    // console.log(A, B, C, D);
+    if (D < 0) return null;
+    var sqrtD = Math.sqrt(D);
+    var t1 = (-B + sqrtD)/(2*A);
+    var t2 = (-B - sqrtD)/(2*A);
+    // If both times are negative, then the object is already past the corner
+    if (t1<0 && t2<0) {
+      return null;
+    }
+    // Otherwise, return the time of earliest contact
+    else if (C<0) {
+      console.log("C<0:", C, "t1:", t1, "t2:", t2);
+      return (t1 < 0 ? t1 : t2);
+    }
+    else {
+      return Math.min(t1, t2);
+    }
+    
   }
   buildGeometry(ni, nj) {
     //------------------------------------------------------------

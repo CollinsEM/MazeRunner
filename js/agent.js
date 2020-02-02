@@ -1,29 +1,3 @@
-class MotionState {
-  /**
-   * @param p0 Initial position
-   * @param v0 Initial velocity
-   */
-  constructor(p0, v0) {
-    this.p0 = new THREE.Vector2( p0.x || 0, p0.y || 0 );
-    this.v0 = new THREE.Vector2( v0.x || Math.random(),
-                                 v0.y || Math.random() );
-  }
-  //--------------------------------------------------------------------
-  xSolve(x1) {
-    return (x1-this.p0.x)/this.v0.x;
-  }
-  ySolve(y1) {
-    return (y1-this.p0.y)/this.v0.y;
-  }
-  //--------------------------------------------------------------------
-  update(dt) {
-    return { dp: this.v0*dt,
-             dv: 0,
-             p:  this.v0*dt + this.p0,
-             v:  this.v0 };
-  }
-};
-
 /**
  * The Avatar class describes the appearance of the AI agent, and
  * manages its interaction with the external environment.

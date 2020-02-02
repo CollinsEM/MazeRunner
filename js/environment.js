@@ -19,8 +19,8 @@ class Environment {
     this.renderer.setClearColor( 0x000000 );
 	  this.renderer.setPixelRatio( window.devicePixelRatio );
 	  this.renderer.setSize( window.innerWidth, window.innerHeight );
-	  this.renderer.gammaInput = true;
-	  this.renderer.gammaOutput = true;
+	  // this.renderer.gammaInput = true;
+	  // this.renderer.gammaOutput = true;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 	  this.container.appendChild( this.renderer.domElement );
