@@ -51,7 +51,7 @@ class Environment {
     this.scene.add( spotLight2 );
     
 	  this.group = new THREE.Group();
-    var ni = 20, nj = 20;
+    var ni = 10, nj = 10;
   
     this.maze = new Maze(ni, nj);
     this.group.add( this.maze );

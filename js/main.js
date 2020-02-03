@@ -38,8 +38,15 @@ function onWindowResize() {
 	env.renderer.setSize( window.innerWidth, window.innerHeight );
 }
 //--------------------------------------------------------------------
+var cont = true;
 var step = true;
-function onWindowKeypress() {
+function onWindowKeypress(ev) {
+  // console.log(ev);
+  switch (ev.key) {
+  case 'q':
+    cont = !cont;
+    break;
+  }
   step = true;
 }
 //--------------------------------------------------------------------
