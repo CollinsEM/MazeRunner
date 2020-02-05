@@ -1,13 +1,16 @@
 "use strict"
 
-var xAxis = new THREE.Vector3(1, 0, 0);
-var yAxis = new THREE.Vector3(0, 1, 0);
-var zAxis = new THREE.Vector3(0, 0, 1);
+var xAxis = new THREE.Vector3(1, 0, 0), nxAxis = new THREE.Vector3(-1, 0, 0);
+var yAxis = new THREE.Vector3(0, 1, 0), nyAxis = new THREE.Vector3( 0,-1, 0);
+var zAxis = new THREE.Vector3(0, 0, 1), nzAxis = new THREE.Vector3( 0, 0,-1);
 var N = new THREE.Vector3( 0, 1, 0);
 var S = new THREE.Vector3( 0,-1, 0);
 var E = new THREE.Vector3( 1, 0, 0);
 var W = new THREE.Vector3(-1, 0, 0);
 var eps = 1.0e-6;
+
+var wallMat = new THREE.MeshLambertMaterial( { color: 0x9999ff,
+                                               side: THREE.DoubleSide } );
 
 class Door {
   /**
@@ -152,39 +155,64 @@ class Door {
 
 class Wall extends THREE.BufferGeometry {
   /**
-   * @brief Implements semantics for a solid wall between adjacent
-   * cells
+   *  @brief Implements semantics for one side of a solid wall between
+   *  adjacent cells.
    *
-   *  @param cl cell on the left side of the wall
-   *  @param cr cell on the right side of the wall
+   *  @param c  interior cell adjacent to this side of the wall
+   *  @param n  direction normal to wall
    *
-   *  The constructor arguments are ordered such that the cell on the
-   *  left is the interior of the cell.
+   *  cell   provides a reference to the adjancent interior cell
    *
-   *  center specifies the center of the wall.
+   *  center specifies the location of the center of the wall.
    *
    *  normal provides the orientation of the wall and is directed
-   *  inwards towards the center of the cell.
+   *  inwards towards the center of the parent cell.
    */
-  constructor(cl, cr) {
+  constructor(c, n) {
     super();
-    this.cl = cl;
-    this.cr = cr;
-    this.center = { x: 0.45*cl.center.x + 0.65*cr.center.x,
-                    y: 0.45*cl.center.y + 0.65*cr.center.y };
-    this.normal = { x: cl.center.x - cr.center.x,
-                    y: cl.center.y - cr.center.y };
+    this.cell = c;
+    this.normal = n;
+    this.center = { x: c.x - 0.45*n.x,
+                    y: c.y - 0.45*n.y };
   }
+  // Render exposed surfaces
   buildGeometry() {
+    var c = this.center, n = this.normal;
+    var dx = (n.x != 0 ? 0 : 0.55);
+    var dy = (n.y != 0 ? 0 : 0.55);
+    this.geometry.vertices.push(new THREE.Vector3(c.x - dx, c.y - dy, 0));
+    this.geometry.vertices.push(new THREE.Vector3(c.x - dx, c.y - dy, 1));
+    this.geometry.vertices.push(new THREE.Vector3(c.x + dx, c.y + dy, 0));
+    this.geometry.vertices.push(new THREE.Vector3(c.x + dx, c.y + dy, 1));
+    this.geometry.vertices.push(new THREE.Vector3(c.x - dx - 0.05*n.x, c.y - dy - 0.05*n.y, 0));
+    this.geometry.vertices.push(new THREE.Vector3(c.x - dx - 0.05*n.x, c.y - dy - 0.05*n.y, 1));
+    this.geometry.vertices.push(new THREE.Vector3(c.x + dx - 0.05*n.x, c.y + dy - 0.05*n.x, 0));
+    this.geometry.vertices.push(new THREE.Vector3(c.x + dx - 0.05*n.x, c.y + dy - 0.05*n.x, 1));
+    this.geometry.faces.push(new THREE.Face3(0, 1, 3));
+    this.geometry.faces.push(new THREE.Face3(0, 3, 2));
+    this.geometry.faces.push(new THREE.Face3(0, 4, 5));
+    this.geometry.faces.push(new THREE.Face3(0, 5, 1));
+    this.geometry.faces.push(new THREE.Face3(1, 5, 7));
+    this.geometry.faces.push(new THREE.Face3(1, 7, 3));
+    this.geometry.faces.push(new THREE.Face3(3, 7, 6));
+    this.geometry.faces.push(new THREE.Face3(3, 6, 2));
+    this.geometry.computeFaceNormals();
   }
   // Compute the time of impact between this wall and a sphere of
   // radius R, center p0, traveling with velocity v0.
   detectCollision(p0, v0, R) {
-    if (this.normal.x) {
-      return ( v0.x ? (this.center.x + R*this.normal.x - p0.x)/v0.x : null );
+    if (this.normal.x*v0.x != 0) {
+      var dx = this.center.x + R*this.normal.x - p0.x ;
+      var t = dx/v0.x ;
+      return ( (t >= 0 || Math.abs(dx) < R) ? t : null ) ;
+    }
+    else if (this.normal.y*v0.y != 0) {
+      var dy = this.center.y + R*this.normal.y - p0.y ;
+      var t = dy/v0.y ;
+      return ( (t >= 0 || Math.abs(dy) < R) ? t : null ) ;
     }
     else {
-      return ( v0.y ? (this.center.y + R*this.normal.y - p0.y)/v0.y : null );
+      return null;
     }
   }
 };
@@ -193,16 +221,23 @@ class Cell extends THREE.BufferGeometry {
   constructor(x, y) {
     super();
     this.center = { x: x, y: y };
+    // Flag indicating if a wall is present [ W, S, E, N ]
+    this.isWall = [ false, false, false, false ];
     this.walls = [];
     this.doors = [];
+    this.buildGeometry();
   }
   buildGeometry() {
-    
+    this.walls.forEach( w => w.buildGeometry(this.center) );
   }
-  detectCollision(dtmax) {
+  detectCollision(p0, v0, R, dtmax) {
     var dt = dtmax;
+    var n  = zAxis;
     this.walls.forEach( function(wall) {
-      var ret = wall.detectCollision();
+      var t = wall.detectCollision(p0, v0, R);
+      if (t < dt) {
+        dt = t;
+        n = wall.normal;
     } );
     this.doors.forEach( function(door) {
       var ret = door.detectCollision();
@@ -212,16 +247,9 @@ class Cell extends THREE.BufferGeometry {
 };
 
 //--------------------------------------------------------------------
-// Find the smallest positive value in an array of scalar values
-//--------------------------------------------------------------------
-function smallestPositiveValue(accum, curr) {
-  if (curr < 0) return accum;
-  if (accum && accum < curr) return accum;
-  else return curr;
-}
-
 var arrow = [], timeout = [];
 var it = 0;
+//--------------------------------------------------------------------
 class Maze extends THREE.Object3D {
   constructor(ni, nj) {
     super();
@@ -408,14 +436,15 @@ class Maze extends THREE.Object3D {
     var n  = zAxis;
     var v  = vel.clone();
     var p  = pos.clone();
+    var vn = 0; // v dot n
     // console.log(i0, j0);
     // console.log(pos.x, pos.y);
     // console.log(vel.x, vel.y);
     if (i0 < 0 && j <= 0 ) {
       // Exit reached, halt the simulation.
       cont = false;
-      dt = -0.1*dtmax;
       n = xAxis;
+      vn = vel.x*n.x + vel.y*n.y;
     }
     else if (j0 < 0 || j0 >= this.nj) {
       return { dt: -0.1*dtmax, vx: vel.x, vy:-vel.y };
@@ -539,8 +568,6 @@ class Maze extends THREE.Object3D {
     it = (it+1)%arrow.length;
     p = { x: pos.x + vel.x*dt,
           y: pos.y + vel.y*dt };
-    // console.log("vx:", vel.x, " => ", vel.x - 2*vn*n.x);
-    // console.log("vy:", vel.y, " => ", vel.y - 2*vn*n.y);
     v = { x: vel.x - 2*vn*n.x,
           y: vel.y - 2*vn*n.y };
     return { dt: dt, p: p, v: v };
