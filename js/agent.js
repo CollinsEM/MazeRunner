@@ -23,18 +23,17 @@ class Avatar extends THREE.Group {
     this.add(this.arrow);
   }
   update(dtmax) {
-    var dt = dtmax;
-    for (var i=0; dt>0 && i<10; ++i) {
-      var obj = this.env.detectCollision(this.position,
-                                         this.velocity,
-                                         dt, this.radius);
-      
-      dt -= obj.dt;
-      this.position.copy(obj.p);
-      this.velocity.copy(obj.v);
-      this.arrow.setLength(this.velocity.length());
-      this.arrow.setDirection(this.velocity.clone().normalize());
-    }
+    // var dt = dtmax;
+    // for (var i=0; dt>0 && i<10; ++i) {
+    //   var obj = this.env.detectCollision(this.position,
+    //                                      this.velocity,
+    //                                      dt, this.radius);
+    //   dt -= obj.dt;
+    //   this.position.set(obj.px, obj.py, 0.5);
+    //   this.velocity.set(obj.vx, obj.vy, 0.0);
+    //   this.arrow.setLength(this.velocity.length());
+    //   this.arrow.setDirection(this.velocity.clone().normalize());
+    // }
   }
 };
 
