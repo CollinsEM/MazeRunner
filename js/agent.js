@@ -20,7 +20,6 @@ class Avatar extends THREE.Group {
       var obj = this.env.detectCollision(this.position,
                                          this.velocity,
                                          dt, this.radius);
-      i
       dt -= obj.dt;
       this.translateX(this.velocity.x*obj.dt);
       this.translateY(this.velocity.y*obj.dt);
